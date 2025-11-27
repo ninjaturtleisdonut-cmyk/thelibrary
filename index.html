@@ -1,1 +1,472 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rain-Swept Library</title>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Use Inter font -->
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
+        
+        /* 1. Base Library Palette and Mood Filter */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #000000; /* Pure black background */
+            color: #ff3333; /* Red highlight color */
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            
+            /* Initial Filter (Red/Black high contrast) */
+            filter: brightness(0.6) sepia(1) hue-rotate(330deg) saturate(400%);
+            transition: filter 0.5s ease, color 0.5s ease, background-color 0.5s ease;
+            cursor: default; 
+        }
 
+        .library-scene {
+            width: 90%;
+            max-width: 1200px;
+            height: 90vh;
+            position: relative;
+            transition: filter 0.5s ease;
+        }
+        
+        /* --- INVERTED COLORS STATE (Spacebar Press) --- */
+        .inverted-colors {
+            /* Drastic shift to Cyan/White high contrast */
+            filter: brightness(1.5) sepia(1) hue-rotate(150deg) contrast(180%) saturate(300%); 
+            color: #11ffff; /* Cyan highlight */
+            background-color: #002e2e;
+        }
+
+        /* --- BROKEN LIGHTS (Pitch Black + Lighter) STATE --- */
+        .broken-darkness {
+            background-color: #000000 !important;
+            filter: brightness(0.0) saturate(0%); /* Absolute pitch black */
+            transition: filter 1s ease;
+            cursor: none; 
+        }
+
+        .broken-darkness .light-source,
+        .broken-darkness .red-glow,
+        .broken-darkness .floor-glow,
+        .broken-darkness .window-frame {
+            display: none !important;
+        }
+
+        /* Lighter Effect (follows mouse) */
+        #lighter {
+            position: fixed;
+            width: 150px;
+            height: 150px;
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 1000; 
+            /* Soft, circular light */
+            background: radial-gradient(circle, rgba(255, 100, 50, 0.4) 0%, rgba(255, 0, 0, 0.1) 30%, rgba(0, 0, 0, 0) 70%);
+            opacity: 0; 
+            transform: translate(-50%, -50%); 
+            transition: opacity 0.3s;
+        }
+        
+        /* 2. Bookshelf Walls (simulating structure) */
+        .bookshelf-wall {
+            position: absolute;
+            top: 0;
+            height: 100%;
+            background-color: #1a1a1a; /* Dark base color */
+            box-shadow: inset 0 0 80px rgba(0, 0, 0, 0.9); 
+            z-index: 10;
+        }
+        
+        .left-wall {
+            left: 0;
+            width: 45%;
+            clip-path: polygon(0 0, 100% 0, 80% 100%, 0% 100%);
+        }
+
+        .right-wall {
+            right: 0;
+            width: 45%;
+            clip-path: polygon(0 0, 100% 0, 100% 100%, 20% 100%);
+        }
+
+        /* Ceiling (Simple dark block for shadows) */
+        .ceiling {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 50px;
+            background-color: #000000;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.8);
+            z-index: 50;
+            transform: perspective(100px) rotateX(5deg);
+        }
+
+        /* Floor (Intense Red Floor Glow/Overlay) */
+        .floor-glow {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 40%; 
+            background: radial-gradient(ellipse at 50% 100%, rgba(255, 0, 0, 0.8) 0%, rgba(255, 0, 0, 0.35) 30%, rgba(0, 0, 0, 0) 70%);
+            z-index: 5; 
+            pointer-events: none;
+            transition: opacity 0.5s;
+        }
+
+        /* Bookshelves details */
+        .shelf {
+            height: 18%; 
+            border-bottom: 1px solid #330000; 
+            padding: 2px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .book {
+            width: 8px; 
+            height: 90%;
+            background-color: #0d0d0d; 
+            display: inline-block;
+            margin-right: 1px;
+            box-shadow: 0 0 1px rgba(255, 0, 0, 0.5); 
+        }
+        .book:nth-child(3n) { background-color: #141414; }
+        .book:nth-child(5n) { background-color: #080808; }
+
+        /* Space for missing books */
+        .book-gap {
+            width: 16px; 
+            height: 90%;
+            display: inline-block;
+            margin-right: 1px;
+            background-color: transparent; 
+        }
+
+        /* Windows with Rain */
+        .window-frame {
+            position: absolute;
+            width: 100px;
+            height: 200px;
+            background-color: rgba(0, 0, 0, 0.8);
+            border: 5px solid #000;
+            z-index: 15;
+            overflow: hidden;
+            box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.9);
+            border-radius: 5px;
+            /* Ensure the window is visible above the bookshelf details */
+            opacity: 0.95; 
+        }
+
+        .left-window {
+            top: 20%;
+            left: 10%;
+            transform: skewY(-10deg);
+        }
+        .right-window {
+            top: 20%;
+            right: 10%;
+            transform: skewY(10deg);
+        }
+
+        /* Rain Animation */
+        @keyframes fall {
+            to { transform: translateY(100vh); }
+        }
+
+        .rain-drop {
+            position: absolute;
+            width: 1px;
+            height: 15px;
+            background-color: rgba(173, 216, 230, 0.7); /* Light blue for rain */
+            animation: fall linear infinite;
+        }
+        /* Custom delay and speed for variety */
+        .rain-drop:nth-child(3n) { animation-duration: 0.8s; animation-delay: -0.3s; height: 10px; }
+        .rain-drop:nth-child(5n) { animation-duration: 0.6s; animation-delay: -0.5s; height: 20px; }
+        .rain-drop:nth-child(7n) { animation-duration: 1.2s; animation-delay: -0.7s; height: 12px; }
+
+        /* General Foreground Objects (Keeping silhouettes) */
+        .foreground-bench, .silhouette-figure, .coat-rack, .knocked-chair {
+             z-index: 60;
+             /* Ensure objects have the right base color for the library scene */
+             background-color: #1a0000; 
+        }
+        
+        /* 4. Foreground Bench */
+        .foreground-bench {
+            position: absolute;
+            bottom: 0;
+            left: 15%;
+            width: 70%;
+            height: 100px;
+            background-color: #220000; 
+            border-top: 5px solid #440000;
+            z-index: 50; 
+            box-shadow: 0 -10px 40px rgba(255, 0, 0, 0.4); 
+        }
+
+        /* Silhouette Figure (Mid-ground object) */
+        .silhouette-figure {
+            position: absolute;
+            bottom: 100px; 
+            left: 40%; 
+            width: 80px;
+            height: 250px;
+            background-color: #000000; 
+            z-index: 40; 
+            border-radius: 4px;
+            clip-path: polygon(25% 0, 75% 0, 100% 100%, 0% 100%);
+            box-shadow: 0 0 10px rgba(255, 0, 0, 0.6);
+        }
+
+        /* Coat Rack with Coats (Foreground Left) */
+        .coat-rack {
+            position: absolute;
+            bottom: 100px;
+            left: 5%;
+            width: 40px;
+            height: 250px;
+            z-index: 55; 
+        }
+        .rack-pole {
+            width: 5px;
+            height: 100%;
+            background-color: #000000;
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            box-shadow: 0 0 5px rgba(255, 0, 0, 0.7);
+        }
+        .coat {
+            position: absolute;
+            width: 30px;
+            height: 80px;
+            background-color: #0d0d0d;
+            border-radius: 50% 50% 10% 10%;
+            top: 50px;
+            left: 10px;
+            transform: rotate(-5deg);
+        }
+        .coat.right {
+            left: auto;
+            right: 10px;
+            transform: rotate(5deg);
+            top: 80px;
+            height: 70px;
+            background-color: #1a1a1a;
+        }
+
+        /* Knocked Over Chair (Foreground Right) */
+        .knocked-chair {
+            position: absolute;
+            bottom: 10px;
+            right: 10%;
+            width: 80px;
+            height: 40px;
+            background-color: #1a1a1a;
+            z-index: 60; 
+            transform: rotate(15deg) skewX(-10deg); 
+            border-radius: 5px;
+            box-shadow: 0 5px 15px rgba(255, 0, 0, 0.5);
+
+            /* Chair legs detail */
+            &::before, &::after {
+                content: '';
+                position: absolute;
+                bottom: -10px;
+                width: 5px;
+                height: 30px;
+                background-color: #000000;
+                transform: rotate(70deg);
+            }
+            &::before { left: 5px; }
+            &::after { right: 5px; }
+        }
+
+
+        /* 5. Aisle End (Background layer) */
+        .aisle-end {
+            position: absolute;
+            top: 0;
+            left: 45%;
+            width: 10%;
+            height: 100%;
+            background-color: #080808; 
+            z-index: 5; 
+            border-left: 1px solid #110000;
+            border-right: 1px solid #110000;
+        }
+
+    </style>
+</head>
+<body class="p-4">
+    
+    <!-- Lighter Element (hidden until lights break) -->
+    <div id="lighter" style="opacity: 0;"></div>
+
+    <!-- Main Library Scene Container -->
+    <div class="library-scene">
+        
+        <!-- Ceiling Element -->
+        <div class="ceiling"></div>
+        
+        <!-- Deepest Background Layer (Aisle End) -->
+        <div class="aisle-end"></div>
+
+        <!-- Intense Red Floor Glow/Overlay -->
+        <div class="floor-glow"></div>
+
+        <!-- LEFT WALL: Bookshelves (Middle Layer) -->
+        <div class="bookshelf-wall left-wall p-2">
+            
+            <!-- Window with Rain -->
+            <div class="window-frame left-window">
+                <!-- Generate Rain Drops (50 drops per window) -->
+                <script>
+                    const rainContainer = document.querySelector('.left-window');
+                    for (let i = 0; i < 50; i++) {
+                        const drop = document.createElement('div');
+                        drop.className = 'rain-drop';
+                        drop.style.left = `${Math.random() * 100}%`;
+                        drop.style.animationDuration = `${0.6 + Math.random() * 1.0}s`;
+                        drop.style.animationDelay = `${-Math.random() * 2}s`;
+                        rainContainer.appendChild(drop);
+                    }
+                </script>
+            </div>
+
+            <!-- Shelf Layers -->
+            <div class="shelf">
+                <!-- Script to generate books and gaps -->
+                <script>
+                    const generateBooksWithGaps = (count) => {
+                        let books = '';
+                        for(let i=0; i<count; i++) {
+                            if (Math.random() < 0.05) { // 5% chance of a gap
+                                books += `<div class="book-gap"></div>`;
+                            } else {
+                                books += `<div class="book" style="height: ${60 + Math.random() * 40}%;"></div>`;
+                            }
+                        }
+                        return books;
+                    };
+                    document.write(generateBooksWithGaps(90)); 
+                </script>
+            </div>
+            <div class="shelf"><script>document.write(generateBooksWithGaps(90));</script></div>
+            <div class="shelf"><script>document.write(generateBooksWithGaps(90));</script></div>
+            <div class="shelf"><script>document.write(generateBooksWithGaps(90));</script></div>
+            <div class="shelf"><script>document.write(generateBooksWithGaps(90));</script></div>
+            <div class="shelf"><script>document.write(generateBooksWithGaps(90));</script></div>
+        </div>
+
+        <!-- RIGHT WALL: Bookshelves (Middle Layer) -->
+        <div class="bookshelf-wall right-wall p-2">
+            
+            <!-- Window with Rain -->
+            <div class="window-frame right-window">
+                <!-- Generate Rain Drops (50 drops per window) -->
+                <script>
+                    const rainContainerRight = document.querySelector('.right-window');
+                    for (let i = 0; i < 50; i++) {
+                        const drop = document.createElement('div');
+                        drop.className = 'rain-drop';
+                        drop.style.left = `${Math.random() * 100}%`;
+                        drop.style.animationDuration = `${0.6 + Math.random() * 1.0}s`;
+                        drop.style.animationDelay = `${-Math.random() * 2}s`;
+                        rainContainerRight.appendChild(drop);
+                    }
+                </script>
+            </div>
+
+             <!-- Shelf Layers -->
+             <div class="shelf"><script>document.write(generateBooksWithGaps(90));</script></div>
+             <div class="shelf"><script>document.write(generateBooksWithGaps(90));</script></div>
+             <div class="shelf"><script>document.write(generateBooksWithGaps(90));</script></div>
+             <div class="shelf"><script>document.write(generateBooksWithGaps(90));</script></div>
+             <div class="shelf"><script>document.write(generateBooksWithGaps(90));</script></div>
+             <div class="shelf"><script>document.write(generateBooksWithGaps(90));</script></div>
+        </div>
+
+        <!-- Coat Rack with Coats (Foreground Object) -->
+        <div class="coat-rack">
+            <div class="rack-pole"></div>
+            <div class="coat"></div>
+            <div class="coat right"></div>
+        </div>
+        
+        <!-- Silhouette Figure (Mid-ground Object) -->
+        <div class="silhouette-figure"></div>
+
+        <!-- Knocked Over Chair (Foreground Object) -->
+        <div class="knocked-chair"></div>
+
+        <!-- FOREGROUND LAYER: Bench/Object -->
+        <div class="foreground-bench">
+            <!-- Bench remains for depth -->
+        </div>
+        
+    </div>
+    
+    <script>
+        const body = document.body;
+        const lighter = document.getElementById('lighter');
+        let spacePresses = [];
+        let lightsBroken = false;
+        const FAST_PRESS_THRESHOLD = 5; 
+        const TIME_LIMIT = 1000; 
+
+        // Lighter follows mouse movement
+        document.addEventListener('mousemove', (e) => {
+            if (lightsBroken) {
+                lighter.style.left = `${e.clientX}px`;
+                lighter.style.top = `${e.clientY}px`;
+            }
+        });
+
+        // Spacebar keydown listener
+        window.addEventListener('keydown', (e) => {
+            if (e.code === 'Space') {
+                e.preventDefault(); 
+
+                if (lightsBroken) {
+                    return; 
+                }
+
+                const now = Date.now();
+                
+                // 1. Record the press time
+                spacePresses.push(now);
+
+                // 2. Filter out presses older than the time limit
+                spacePresses = spacePresses.filter(time => now - time < TIME_LIMIT);
+
+                // 3. Check for light break condition
+                if (spacePresses.length >= FAST_PRESS_THRESHOLD) {
+                    // LIGHTS BREAK! (Permanent Blackout)
+                    lightsBroken = true;
+                    body.classList.remove('inverted-colors'); 
+                    body.classList.add('broken-darkness');
+                    lighter.style.opacity = 1; 
+                    console.log('--- LIGHTS BROKEN! ONLY THE LIGHTER REMAINS ---');
+                } else {
+                    // 4. Invert colors toggle
+                    body.classList.toggle('inverted-colors');
+                    console.log(`Spacebar pressed. Current count: ${spacePresses.length}. Colors toggled.`);
+                }
+            }
+        });
+    </script>
+
+</body>
+</html>
