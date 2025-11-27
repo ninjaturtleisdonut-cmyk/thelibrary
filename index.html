@@ -418,72 +418,76 @@
         
     </div>
     
-    <script>
+<script>
 const body = document.body;
 const lighter = document.getElementById('lighter');
 
-let morseInput = "";           // builds like "...-.---..." etc
-let currentChar = "";          // stores a single letter timing
 let pressStart = 0;
-let letterEndTimer = null;
-let blackoutTriggered = false;
+let currentSymbol = "";
+let morseLetters = [];
+let finished = false;
 
-// Define the target sequence for blackout
-const targetMorse = "...-. .-. .- - .-";    // Expected pattern
-
-// Convert dot/dash combination into letters
-const morseMap = {
-    ".-.": "R",
+// Morse dictionary
+const MORSE = {
     "...": "S",
     "-": "T",
+    ".-.": "R",
     ".-": "A"
 };
 
-function checkMatch() {
-    if (morseInput.trim() === "S T R A T A") {
+const TARGET = ["S","T","R","A","T","A"];   // Required message
+
+function checkSequence() {
+    if (morseLetters.join("") === TARGET.join("") && !finished) {
+        finished = true;
+
+        // 🌑 BLACKOUT MODE
+        body.classList.remove("inverted-colors");
         body.classList.add("broken-darkness");
-        lighter.style.opacity = 1;
-        blackoutTriggered = true;
-        console.log("💀 MORSE MATCH — BLACKOUT ACTIVATED 💀");
+        lighter.style.opacity = "1";
+        console.log("%cBLACKOUT TRIGGERED — STRATA DETECTED","color:red;font-size:20px");
     }
 }
 
-// SPACE BAR PRESS START
+// Detect press duration (dot or dash)
 document.addEventListener("keydown", e => {
-    if (e.code !== "Space" || blackoutTriggered) return;
-    if (pressStart === 0) pressStart = Date.now();
+    if (e.code !== "Space" || finished) return;
+    if (!pressStart) pressStart = Date.now();
 });
 
-// SPACE BAR RELEASE → determines DOT or DASH
+// On release = determine DOT or DASH
 document.addEventListener("keyup", e => {
-    if (e.code !== "Space" || blackoutTriggered) return;
+    if (e.code !== "Space" || finished) return;
 
-    const duration = Date.now() - pressStart;
+    const hold = Date.now() - pressStart;
     pressStart = 0;
 
-    currentChar += duration < 200 ? "." : "-";   // dot if quick, dash if held
+    currentSymbol += hold < 220 ? "." : "-";
 
-    clearTimeout(letterEndTimer);
+    // Toggle invert effect every press (only before blackout)
+    body.classList.toggle("inverted-colors");
 
-    // end of letter if no press for 600ms
-    letterEndTimer = setTimeout(() => {
-        if (morseMap[currentChar]) {
-            morseInput += morseMap[currentChar] + " ";
-            console.log("Letter:", morseMap[currentChar], "| Sequence:", morseInput);
-            checkMatch();
+    // If no continuation → treat as end of letter
+    clearTimeout(window.letterTimer);
+    window.letterTimer = setTimeout(() => {
+        if (MORSE[currentSymbol]) {
+            morseLetters.push(MORSE[currentSymbol]);
+            console.log("Letter:", MORSE[currentSymbol], " | Sequence:", morseLetters.join(""));
+            checkSequence();
         }
-        currentChar = "";
-    }, 600);
+        currentSymbol = "";
+    }, 500);
 });
 
-// Lighter follows mouse after blackout
+// Lighter follows mouse post-blackout
 document.addEventListener("mousemove", e => {
-    if (blackoutTriggered) {
+    if (finished) {
         lighter.style.left = `${e.clientX}px`;
         lighter.style.top = `${e.clientY}px`;
     }
 });
 </script>
+
 
 
 </body>
