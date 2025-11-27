@@ -422,7 +422,6 @@
 const body = document.body;
 const lighter = document.getElementById('lighter');
 
-let pressStart = 0;
 let currentSymbol = "";
 let morseLetters = [];
 let finished = false;
@@ -435,51 +434,61 @@ const MORSE = {
     ".-": "A"
 };
 
-const TARGET = ["S","T","R","A","T","A"];   // Required message
+const TARGET = ["S","T","R","A","T","A"];   // Required message to trigger blackout
 
-function checkSequence() {
-    if (morseLetters.join("") === TARGET.join("") && !finished) {
-        finished = true;
+// SPACE = dot/dash input (tap for ".", hold for "-")
+let pressStart = 0;
 
-        // 🌑 BLACKOUT MODE
-        body.classList.remove("inverted-colors");
-        body.classList.add("broken-darkness");
-        lighter.style.opacity = "1";
-        console.log("%cBLACKOUT TRIGGERED — STRATA DETECTED","color:red;font-size:20px");
-    }
-}
-
-// Detect press duration (dot or dash)
 document.addEventListener("keydown", e => {
-    if (e.code !== "Space" || finished) return;
-    if (!pressStart) pressStart = Date.now();
-});
+    if (finished) return;
 
-// On release = determine DOT or DASH
-document.addEventListener("keyup", e => {
-    if (e.code !== "Space" || finished) return;
+    // Start capture on space down
+    if (e.code === "Space" && pressStart === 0) {
+        pressStart = Date.now();
+        e.preventDefault();
+    }
 
-    const hold = Date.now() - pressStart;
-    pressStart = 0;
+    // ENTER = letter separator
+    if (e.code === "Enter") {
+        e.preventDefault();
 
-    currentSymbol += hold < 220 ? "." : "-";
-
-    // Toggle invert effect every press (only before blackout)
-    body.classList.toggle("inverted-colors");
-
-    // If no continuation → treat as end of letter
-    clearTimeout(window.letterTimer);
-    window.letterTimer = setTimeout(() => {
-        if (MORSE[currentSymbol]) {
+        if (currentSymbol.length > 0 && MORSE[currentSymbol]) {
             morseLetters.push(MORSE[currentSymbol]);
-            console.log("Letter:", MORSE[currentSymbol], " | Sequence:", morseLetters.join(""));
-            checkSequence();
+            console.log("Letter:", MORSE[currentSymbol], "| Sequence:", morseLetters.join(""));
+
+            currentSymbol = "";
         }
-        currentSymbol = "";
-    }, 500);
+
+        // Check for completion
+        if (morseLetters.join("") === TARGET.join("")) {
+            finished = true;
+
+            body.classList.remove("inverted-colors");
+            body.classList.add("broken-darkness");
+            lighter.style.opacity = "1";
+
+            console.log("%cBLACKOUT TRIGGERED — STRATA INPUT CONFIRMED","color:red;font-size:20px");
+        }
+    }
 });
 
-// Lighter follows mouse post-blackout
+document.addEventListener("keyup", e => {
+    if (finished) return;
+
+    if (e.code === "Space") {
+        const holdTime = Date.now() - pressStart;
+        pressStart = 0;
+
+        currentSymbol += holdTime < 250 ? "." : "-";
+
+        // Toggle invert effect every press until blackout
+        body.classList.toggle("inverted-colors");
+
+        console.log("Current Morse:", currentSymbol);
+    }
+});
+
+// Flashlight movement post-blackout
 document.addEventListener("mousemove", e => {
     if (finished) {
         lighter.style.left = `${e.clientX}px`;
@@ -487,7 +496,6 @@ document.addEventListener("mousemove", e => {
     }
 });
 </script>
-
 
 
 </body>
